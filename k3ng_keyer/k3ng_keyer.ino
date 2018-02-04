@@ -6135,14 +6135,20 @@ void command_mode()
  * Cheesy, but it works
  * 
  * Modes
- * 0 - Default 5 Char Alpha
- * 1 - Callsigns (US)]
- * 2 - Callsigns (International) w/ reply (So you have to tack on "DE N!XF" or whatever your callsign is
+ * 0 - Default 5 Char Alpha - Word spacing doesn't apply
+ * 1 - 5 Char Alpha - Wod spacing applies
+ * 2 - Callsigns (US) - Word spacing doesn't apply
+ * 3 - Callsigns (US) - Spacing applies
+ * 
+ * x - Callsigns (International) w/ reply (So you have to tack on "DE N!XF" or whatever your callsign is
  * 
  * TODO:
- * 1 - Need to account for spaces (pauses)
- * 2 - Check/validate on char send, so fail (boop) on actual error and not at end
- * 3 - Add a high score mark (So have current run count + max run count on row 1, then the text to send on row 2)
+ * x - Need to account for spaces (pauses)
+ * x - Check/validate on char send, so fail (boop) on actual error and not at end
+ * x - Add a high score mark (So have current run count + max run count on row 1, then the text to send on row 2)
+ * 1 - Add numbers (Alphanumeric)
+ * 2 - Should allow for longer strings (In the Char modes)
+ *       How about incrementing the string size for each mod 10 run count? 
  * 
  */
 void command_cw_send_practice(byte practice_mode)
@@ -6160,6 +6166,8 @@ void command_cw_send_practice(byte practice_mode)
   byte speed_mode_before = speed_mode;
   byte keyer_mode_before = configuration.keyer_mode;
   byte progressive_step_counter;
+  byte paddle_echo_space_hit = 1;
+  byte wordspacecounts=0;
 
   char word_buffer[10];
   short sRunCount = 0; // 3 Feb 2018 GAS Keep track of the number of successful words
@@ -6184,21 +6192,41 @@ void command_cw_send_practice(byte practice_mode)
 
   // Should wait here, otherwise you never see the text above
 
-  // 4 Feb 2018 GAS - Testing the param sending
-  if(practice_mode == 0)
+  switch (practice_mode)
   {
-    send_char('0',0);
-  }else if(practice_mode == 1)
-  {
-    send_char('1',0);
-  }else
-  {
-    send_char('?',0);
+    case 0:
+      wordspacecounts = 0;
+      send_char('0',0);
+      break;
+     
+    case 1:
+      wordspacecounts = 1;
+      send_char('1',0);
+      break;
+
+     case 2:
+      wordspacecounts = 0;
+      send_char('2',0);
+      break;
+
+     case 3:
+      wordspacecounts = 1;
+      send_char('3',0);
+      break;
+
+      default:
+      wordspacecounts = 0;
+      send_char('?',0);
+      break;     
+    
   }
+
 
   while (loop1){
 
-
+    // 4 Feb 2018 GAS This is a bit of a hack, but setting this flag correctly handles the initial state, otherwise after WordTimout on start
+    //                I treat it as a space which fails the test and basically fails on start of each round.
+    paddle_echo_space_hit = 1;
     // if (practice_mode_called == ECHO_MIXED){
     //   practice_mode = random(ECHO_2_CHAR_WORDS,ECHO_QSO_WORDS+1);
     // } else {
@@ -6219,11 +6247,13 @@ void command_cw_send_practice(byte practice_mode)
 
     switch(practice_mode)
     {
-      case 1: // Callsign
+      case 2: // Callsign (US)
+      case 3: // Callsign (US)
         cw_to_send_to_user = generate_callsign(CALLSIGN_US);
         break;
 
       case 0:
+      case 1:
       default:
         cw_to_send_to_user = (char)random(65,91);
         cw_to_send_to_user.concat((char)random(65,91));
@@ -6247,12 +6277,6 @@ void command_cw_send_practice(byte practice_mode)
         //  - This solves #1 too:  The display should be:
         //  "(##) XXXXX"
         //    Where ## is the "run count"
-
-        // 1. Need to add numbers
-        // 2. Need to do call signs (??)
-        // 3. Should allow for longer strings
-        //    - How about incrementing the string size for each mod 10 run count?
-        
 
        // I can't use the encapsulated lcd stuff as the scroll buffers are retained and defeating
        // what I want to do.  So for this routine, I will work around them
@@ -6373,8 +6397,36 @@ void command_cw_send_practice(byte practice_mode)
           user_sent_cw.concat(incoming_char);
           cw_char = 0;
           paddle_hit = 0;
-          // TODO - print it to serial and lcd
+          paddle_echo_space_hit = 0;  // Clear the space flag
+
+          // 4 Feb 2018 GAS This should be the spot to compare what we currently have with what is expected and bail (user_send_loop) on error
+          // This is what we have so far: user_sent_cw
+          // This is what we expect: cw_to_send_to_user
+          if(cw_to_send_to_user.substring(0, user_sent_cw.length()) != user_sent_cw)
+          {
+            // Bail, the test in the following conditional check will handle the fail logic
+            user_send_loop = 0;    
+          }
+          
+        }else if(wordspacecounts && (!paddle_hit) && (millis() > (paddle_echo_buffer_decode_time + (float(1200/configuration.wpm)*(configuration.length_wordspace-length_letterspace)))) && (!paddle_echo_space_hit)) {
+          // Only if we care about word spacing
+          // 4 Feb 2018 GAS I believe a test here for word space would account for word timing, inserting a space if the user waits too long
+  
+          //if ((paddle_echo_buffer == 0) && (millis() > (paddle_echo_buffer_decode_time + (float(1200/configuration.wpm)*(configuration.length_wordspace-length_letterspace)))) && (!paddle_echo_space_hit)) {
+          // So, nothing hit (!paddle_hit) && the time has been exceeded...
+          //    Need a flag for paddle_echo_space_hit (otherwise there will be no end)         
+            
+          user_sent_cw.concat(' ');
+          paddle_echo_space_hit = 1;
+          
+          if(cw_to_send_to_user.substring(0, user_sent_cw.length()) != user_sent_cw)
+          {
+            // Bail, the test in the following conditional check will handle the fail logic
+            user_send_loop = 0;    
+          }
+          
         }
+
 
         // do we have all the characters from the user? - if so, get out of user_send_loop
         if ((user_sent_cw.length() >= cw_to_send_to_user.length()) || ((progressive_step_counter < 255) && (user_sent_cw.length() == progressive_step_counter))) {
@@ -6383,6 +6435,7 @@ void command_cw_send_practice(byte practice_mode)
         }
 
 
+        
         // does the user want to exit?
         while (analogbuttonread(0)) {
           user_send_loop = 0;
@@ -6411,6 +6464,7 @@ void command_cw_send_practice(byte practice_mode)
             send_char(' ',0);
           }
         } else {  
+          // String compare
           if (user_sent_cw == cw_to_send_to_user){     
             beep();
             send_char(' ',0);
@@ -6429,6 +6483,8 @@ void command_cw_send_practice(byte practice_mode)
             
             // 3 Feb 2018 GAS Reset the Run Count
             sRunCount = 0; 
+            // Prent an initial error after restarting on a failed send
+            paddle_echo_space_hit = 1;
           }
         } //if (progressive_step_counter < 255)
       } //if (loop1 && loop2)
@@ -6440,7 +6496,11 @@ void command_cw_send_practice(byte practice_mode)
   configuration.keyer_mode = keyer_mode_before;
   paddle_echo_buffer = 0;
 
-
+  // Clean up display on way out.
+  lcd_clear();
+  
+  service_display();
+  
   
 }
 #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
