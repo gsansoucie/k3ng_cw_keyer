@@ -38,8 +38,12 @@
 #define winkey_xoff_threshold 20         // the number of chars in the buffer when we begin sending XOFFs
 #define winkey_xon_threshold 10          // the number of chars in the buffer below which we deactivate XOFF
 #define default_memory_repeat_time 3000  // time in milliseconds
+// 9 Jan 2017 GAS
 #define LCD_COLUMNS 16
 #define LCD_ROWS 2
+//#define LCD_COLUMNS 20
+//#define LCD_ROWS 4
+
 #define hell_pixel_microseconds 4025
 #define program_memory_limit_consec_spaces 1
 #define serial_leading_zeros 1            // set to 1 to activate leading zeros in serial numbers (i.e. #1 = 001)
@@ -62,7 +66,8 @@
 #define serial_program_memory_buffer_size 500
 
 #ifdef FEATURE_COMMAND_BUTTONS
-  #define analog_buttons_number_of_buttons 4
+  // 25 Jan 2018 GAS Only one button
+  #define analog_buttons_number_of_buttons 1
   #define analog_buttons_r1 10
   #define analog_buttons_r2 1
 #endif

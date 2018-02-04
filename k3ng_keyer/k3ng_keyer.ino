@@ -1,5 +1,7 @@
 /*
 
+ N1XF Clone
+
  K3NG Arduino CW Keyer
 
  Copyright 2010 - 2018 Anthony Good, K3NG
@@ -1245,6 +1247,7 @@ byte send_buffer_status = SERIAL_SEND_BUFFER_NORMAL;
   // #define D6_pin        6
   // #define D7_pin        7
   // LiquidCrystal_I2C lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin, BACKLIGHT_PIN, POSITIVE);  
+ // 9 Jan 2018 GAS This C'Tor leads me to believe my Sainsmart 20x4 should work
   LiquidCrystal_I2C lcd(0x27,20,4);
 #endif //FEATURE_SAINSMART_I2C_LCD    
 
@@ -1405,7 +1408,8 @@ unsigned long automatic_sending_interruption_time = 0;
 
 unsigned long millis_rollover = 0;
 
-#if defined(FEATURE_TRAINING_COMMAND_LINE_INTERFACE)
+// 4 Feb 2018 GAS Pulling in for CW Send practice
+#if defined(FEATURE_TRAINING_COMMAND_LINE_INTERFACE) || defined(FEATURE_COMMAND_MODE_CW_SEND_PRACTICE)
   byte check_serial_override = 0;
   #if defined(OPTION_WORDSWORTH_CZECH)
     #include "keyer_training_text_czech.h"
@@ -6006,6 +6010,18 @@ void command_mode()
             break;
         #endif //FEATURE_COMMAND_MODE_PROGRESSIVE_5_CHAR_PRACTICE
 
+        #ifdef FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
+          // 5 Feb 2018 GAS (Mode "M")
+          case 22:  // M - Simple mode
+          command_cw_send_practice(0);
+          stay_in_command_mode = 0;
+          break;
+          case 2212222:  // More complex...
+          command_cw_send_practice(1);
+          stay_in_command_mode = 0;
+          break;
+        #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
+
         case 112211: // ? - status
           
           delay(250);
@@ -6098,6 +6114,336 @@ void command_mode()
 
 }
 #endif //FEATURE_COMMAND_BUTTONS
+
+
+//-------------------------------------------------------------------------------------------------------
+#if defined (FEATURE_COMMAND_MODE_CW_SEND_PRACTICE) && defined(FEATURE_COMMAND_BUTTONS) && defined(FEATURE_DISPLAY)
+/* 
+ * command_cw_send_practice()
+ *
+ * Added by Glen Sansoucie (N1XF)
+ * 
+ * A simple stand alone CW Send practice mode
+ * I bypass the LCD Scrolling for this, it is written around a 2 row display
+ * The first row contains the running score and settings
+ * The second row contains the text to send
+ * Which really means you need at least 2 rows for this to work
+ * 
+ * This function takes a byte param passed into the Command Mode switch via a munge between the 'm' and a number
+ * The default is 0 which is simply 'm' (dah dah) in command mode
+ * To set mode to 1, send "dah dah dit dah dah dah dah" (A munged M1 char)
+ * Cheesy, but it works
+ * 
+ * Modes
+ * 0 - Default 5 Char Alpha
+ * 1 - Callsigns (US)]
+ * 2 - Callsigns (International) w/ reply (So you have to tack on "DE N!XF" or whatever your callsign is
+ * 
+ * TODO:
+ * 1 - Need to account for spaces (pauses)
+ * 2 - Check/validate on char send, so fail (boop) on actual error and not at end
+ * 3 - Add a high score mark (So have current run count + max run count on row 1, then the text to send on row 2)
+ * 
+ */
+void command_cw_send_practice(byte practice_mode)
+{
+  byte loop1 = 1;
+  byte loop2 = 0;
+  byte x = 0;
+  byte user_send_loop = 0;
+  String cw_to_send_to_user(10);
+  char incoming_char = ' ';
+  String user_sent_cw = "";
+  byte paddle_hit = 0;
+  unsigned long last_element_time = 0;
+  unsigned long cw_char;
+  byte speed_mode_before = speed_mode;
+  byte keyer_mode_before = configuration.keyer_mode;
+  byte progressive_step_counter;
+
+  char word_buffer[10];
+  short sRunCount = 0; // 3 Feb 2018 GAS Keep track of the number of successful words
+  char ctmpBuff[20]; // Its a short (plus formatting)
+  short sMaxRun = 0;  // 4 Feb 2018 GAS Keep track of the HWM for score
+  
+
+  speed_mode = SPEED_NORMAL;                 // put us in normal speed mode 
+  if ((configuration.keyer_mode != IAMBIC_A) && (configuration.keyer_mode != IAMBIC_B)) {
+    configuration.keyer_mode = IAMBIC_B;                   // we got to be in iambic mode (life is too short to make this work in bug mode)
+  }  
+
+  randomSeed(millis());
+
+  lcd_clear();
+
+  lcd_center_print_timed("CW Send Practice", 1, default_display_msg_delay);
+
+  lcd_center_print_timed("Cmd button to exit", 2, default_display_msg_delay);
+  
+  service_display();
+
+  // Should wait here, otherwise you never see the text above
+
+  // 4 Feb 2018 GAS - Testing the param sending
+  if(practice_mode == 0)
+  {
+    send_char('0',0);
+  }else if(practice_mode == 1)
+  {
+    send_char('1',0);
+  }else
+  {
+    send_char('?',0);
+  }
+
+  while (loop1){
+
+
+    // if (practice_mode_called == ECHO_MIXED){
+    //   practice_mode = random(ECHO_2_CHAR_WORDS,ECHO_QSO_WORDS+1);
+    // } else {
+    //   practice_mode = practice_mode_called;
+    // }
+
+    // progressive_step_counter = 255;
+    
+    // switch (practice_mode){
+    //   case CALLSIGN_INTERNATIONAL:
+    //   case CALLSIGN_US:
+    //   case CALLSIGN_EUROPEAN:
+    //   case CALLSIGN_CANADA:
+    //     cw_to_send_to_user = generate_callsign(practice_mode);
+    //     break;
+    //   case ECHO_PROGRESSIVE_5:
+
+
+    switch(practice_mode)
+    {
+      case 1: // Callsign
+        cw_to_send_to_user = generate_callsign(CALLSIGN_US);
+        break;
+
+      case 0:
+      default:
+        cw_to_send_to_user = (char)random(65,91);
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        progressive_step_counter = 1;      
+        break;
+      
+    }
+        
+
+        // 3 Feb 2018 GAS Flipping this a bit
+        //  Printing the text to screen
+        //  But only output a single space here
+        //  OK, so this concept works, however:
+        // X. The previous "words" remain on the screen and cause odd breaking of the new words
+        // X. Need to keep track of (and display) the current "run count"
+        //  - Basically anytime we miss, we reset to 0
+        //  - Otherwise, increment on success
+        //  - This solves #1 too:  The display should be:
+        //  "(##) XXXXX"
+        //    Where ## is the "run count"
+
+        // 1. Need to add numbers
+        // 2. Need to do call signs (??)
+        // 3. Should allow for longer strings
+        //    - How about incrementing the string size for each mod 10 run count?
+        
+
+       // I can't use the encapsulated lcd stuff as the scroll buffers are retained and defeating
+       // what I want to do.  So for this routine, I will work around them
+       // I think I need this lcd_clear() to prep the service_display() calls later
+       lcd_clear();
+       lcd.clear();
+       lcd.setCursor(0,0);
+      
+       // Display the sRunCount
+       sprintf(ctmpBuff, "C: %d H: %d ", sRunCount, sMaxRun);
+
+       lcd.print(ctmpBuff);
+       
+       // Row 2
+       lcd.setCursor(0,1);
+       lcd.print(cw_to_send_to_user);
+ 
+       // 3 Feb 2018 GAS This looks to put this in the non-pregressive mode
+       progressive_step_counter = 255;
+
+    //     break; 
+    //   case ECHO_2_CHAR_WORDS: 
+    //     //word_index = random(0,s2_size);  // min parm is inclusive, max parm is exclusive
+    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s2_table[random(0,s2_size)])));
+    //     cw_to_send_to_user = word_buffer;
+    //     break;
+    //   case ECHO_3_CHAR_WORDS: 
+    //     //word_index = random(0,s3_size);  // min parm is inclusive, max parm is exclusive
+    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s3_table[random(0,s3_size)])));
+    //     cw_to_send_to_user = word_buffer;
+    //     break;
+    //   case ECHO_4_CHAR_WORDS: 
+    //     //word_index = random(0,s4_size);  // min parm is inclusive, max parm is exclusive
+    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s4_table[random(0,s4_size)])));
+    //     cw_to_send_to_user = word_buffer;
+    //     break;    
+    //   case ECHO_NAMES: 
+    //     //word_index = random(0,name_size);  // min parm is inclusive, max parm is exclusive
+    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(name_table[random(0,name_size)])));
+    //     cw_to_send_to_user = word_buffer;
+    //     break; 
+    //   case ECHO_QSO_WORDS: 
+    //     //word_index = random(0,qso_size);  // min parm is inclusive, max parm is exclusive
+    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(qso_table[random(0,qso_size)])));
+    //     cw_to_send_to_user = word_buffer;
+    //     break; 
+    // } //switch (practice_mode)
+    
+    
+    loop2 = 1;
+    
+    while (loop2){
+  
+      user_send_loop = 1;
+      user_sent_cw = "";
+      cw_char = 0;
+      x = 0;
+
+/*
+ * 3 Feb 2018 GAS No.  I don't want to send this, only print it to the LCD
+ *
+      // send the CW to the user
+      // 3 Feb 2018 GAS Print each char
+      while ((x < (cw_to_send_to_user.length())) && (x < progressive_step_counter)){
+        // send_char(cw_to_send_to_user[x],KEYER_NORMAL);
+        // test
+        // port_to_use->print(cw_to_send_to_user[x]);
+        //
+        x++;
+      }
+*/      
+      //port_to_use->println();
+
+      while (user_send_loop) {
+        // get their paddle input
+
+
+        #ifdef FEATURE_DISPLAY
+          service_display();
+        #endif
+
+        #ifdef FEATURE_POTENTIOMETER
+          if (configuration.pot_activated) {
+            check_potentiometer();
+          }
+        #endif
+        
+        #ifdef FEATURE_ROTARY_ENCODER
+          check_rotary_encoder();
+        #endif //FEATURE_ROTARY_ENCODER    
+
+        check_paddles();
+
+        if (dit_buffer) {
+          sending_mode = MANUAL_SENDING;
+          send_dit();
+          dit_buffer = 0;
+          paddle_hit = 1;
+          cw_char = (cw_char * 10) + 1;
+          last_element_time = millis();
+        }
+        if (dah_buffer) {
+          sending_mode = MANUAL_SENDING;
+          send_dah();
+          dah_buffer = 0;
+          paddle_hit = 1;
+          cw_char = (cw_char * 10) + 2;
+          last_element_time = millis();
+        }
+ 
+        // have we hit letterspace time (end of a letter?)
+        if ((paddle_hit) && (millis() > (last_element_time + (float(600/configuration.wpm) * length_letterspace)))) {
+          #ifdef DEBUG_PRACTICE_CMD_MODE
+            debug_serial_port->println(F("command_cw_send_practice: user_send_loop: hit length_letterspace"));
+          #endif
+          incoming_char = convert_cw_number_to_ascii(cw_char);
+          //port_to_use->print(incoming_char);
+          user_sent_cw.concat(incoming_char);
+          cw_char = 0;
+          paddle_hit = 0;
+          // TODO - print it to serial and lcd
+        }
+
+        // do we have all the characters from the user? - if so, get out of user_send_loop
+        if ((user_sent_cw.length() >= cw_to_send_to_user.length()) || ((progressive_step_counter < 255) && (user_sent_cw.length() == progressive_step_counter))) {
+          user_send_loop = 0;
+          //port_to_use->println();
+        }
+
+
+        // does the user want to exit?
+        while (analogbuttonread(0)) {
+          user_send_loop = 0;
+          loop1 = 0;
+          loop2 = 0;
+        }
+
+
+      } //while (user_send_loop)
+
+      if (loop1 && loop2){
+        if (progressive_step_counter < 255){  // we're in progressive mode 
+          if (user_sent_cw.substring(0,progressive_step_counter) == cw_to_send_to_user.substring(0,progressive_step_counter)){ 
+            send_char(' ',0);
+            send_char(' ',0);
+            progressive_step_counter++;
+            if (progressive_step_counter == 6){
+              loop2 = 0;
+              beep();
+              send_char(' ',0);
+              send_char(' ',0);
+            }
+          } else {
+            boop();
+            send_char(' ',0);
+            send_char(' ',0);
+          }
+        } else {  
+          if (user_sent_cw == cw_to_send_to_user){     
+            beep();
+            send_char(' ',0);
+            send_char(' ',0);        
+            loop2 = 0;
+            // 3 Feb 2018 GAS Increment the Run Count
+            sRunCount++; 
+            if(sRunCount > sMaxRun)
+            {
+              sMaxRun = sRunCount;
+            }
+          } else {
+            boop();
+            send_char(' ',0);
+            send_char(' ',0);
+            
+            // 3 Feb 2018 GAS Reset the Run Count
+            sRunCount = 0; 
+          }
+        } //if (progressive_step_counter < 255)
+      } //if (loop1 && loop2)
+    } //loop2
+  } //loop1
+  
+
+  speed_mode = speed_mode_before; 
+  configuration.keyer_mode = keyer_mode_before;
+  paddle_echo_buffer = 0;
+
+
+  
+}
+#endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
 
 //-------------------------------------------------------------------------------------------------------
 #if defined(FEATURE_COMMAND_MODE_PROGRESSIVE_5_CHAR_ECHO_PRACTICE) && defined(FEATURE_COMMAND_BUTTONS)
@@ -9490,7 +9836,8 @@ void service_winkey(byte action) {
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey: WINKEY_ADMIN_COMMAND 0x01");
             #endif //DEBUG_WINKEY          
-            #ifdef defined(__AVR__) //#ifndef ARDUINO_SAM_DUE
+            // 30 Jan 2018 GAS Fix
+            #if defined(__AVR__) //#ifndef ARDUINO_SAM_DUE
               asm volatile ("jmp 0"); /*wdt_enable(WDTO_30MS); while(1) {};*/ 
             #else
               setup();
@@ -11171,7 +11518,7 @@ void serial_tune_command (PRIMARY_SERIAL_CLS * port_to_use)
 }
 #endif
 //---------------------------------------------------------------------
-#ifdef FEATURE_TRAINING_COMMAND_LINE_INTERFACE
+#if defined(FEATURE_TRAINING_COMMAND_LINE_INTERFACE) || defined(FEATURE_COMMAND_MODE_CW_SEND_PRACTICE)
 
 String generate_callsign(byte callsign_mode) {
 
@@ -14947,8 +15294,14 @@ void initialize_display(){
 
   #ifdef FEATURE_DISPLAY    
     #if defined(FEATURE_LCD_SAINSMART_I2C)
-      lcd.begin();
+      // 9 Jan 2018 GAS
+      //lcd.begin();
+      //lcd.begin(LCD_COLUMNS, LCD_ROWS);
+      // 9 Jan 2018 GAS Calling init() vs begin was the key here
+      lcd.init();
       lcd.home();
+      lcd.setBacklight(HIGH);
+      //lcd.print("N1XF");
     #else
       lcd.begin(LCD_COLUMNS, LCD_ROWS);
     #endif
