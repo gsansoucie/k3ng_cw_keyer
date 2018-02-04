@@ -170,6 +170,8 @@
 #define CALLSIGN_US 1
 #define CALLSIGN_EUROPEAN 2
 #define CALLSIGN_CANADA 3
+// 4 Feb 2018 GAS Adding this for my CW Practice routine
+#define CALLSIGN_RANDOM 99
 
 #define ECHO_PROGRESSIVE_5 40
 #define ECHO_2_CHAR_WORDS 41

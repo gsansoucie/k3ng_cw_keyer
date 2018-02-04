@@ -9,8 +9,9 @@
 //#define FEATURE_COMMAND_LINE_INTERFACE  // Command Line Interface functionality
 // #define FEATURE_MEMORIES             // on the Arduino Due, you must have FEATURE_EEPROM_E24C1024 and E24C1024 EEPROM hardware in order to compile this
 // #define FEATURE_MEMORY_MACROS
-// 30 JN 2018 GAS Adding this feature for use with the FTDI chip and Iambic Master
-#define FEATURE_WINKEY_EMULATION    // disabling Automatic Software Reset is highly recommended (see documentation)
+// 30 Jan 2018 GAS Adding this feature for use with the FTDI chip and Iambic Master
+// 4 Feb 2018 GAS WINKEY_EMULATION is a hog (~5k bytes), had to disable it for my stand along CW test code to work
+// #define FEATURE_WINKEY_EMULATION    // disabling Automatic Software Reset is highly recommended (see documentation)
 // #define FEATURE_BEACON
 // #define FEATURE_TRAINING_COMMAND_LINE_INTERFACE
 // #define FEATURE_POTENTIOMETER         // do not enable unless you have a potentiometer connected, otherwise noise will falsely trigger wpm changes

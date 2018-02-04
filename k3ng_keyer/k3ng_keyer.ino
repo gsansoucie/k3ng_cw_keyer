@@ -6024,10 +6024,26 @@ void command_mode()
           command_cw_send_practice(2);
           stay_in_command_mode = 0;
           break;
-          case 2211122:  // UC Callsigns - with word spacing
+          case 2211122:  // US Callsigns - with word spacing
           command_cw_send_practice(3);
           stay_in_command_mode = 0;
           break; 
+          case 2211112:  // Combo  - no spacing
+          command_cw_send_practice(4);
+          stay_in_command_mode = 0;
+          break; 
+          case 2211111:  // Combo  - with word spacing
+          command_cw_send_practice(5);
+          stay_in_command_mode = 0;
+          break; 
+          case 2221111:  // Random Callsign Combo  - no spacing
+          command_cw_send_practice(6);
+          stay_in_command_mode = 0;
+          break; 
+          case 2222111:  // Random Callsign Combo  - with word spacing
+          command_cw_send_practice(7);
+          stay_in_command_mode = 0;
+          break;                   
           
         #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
 
@@ -6148,7 +6164,10 @@ void command_mode()
  * 1 - 5 Char Alpha - Wod spacing applies
  * 2 - Callsigns (US) - Word spacing doesn't apply
  * 3 - Callsigns (US) - Spacing applies
- * 
+ * 4 - Combo (Callsign and 5 Char Alpha) - Word spacing doesn't apply
+ * 5 - Combo (Callsign and 5 Char Alpha) - Word spacing applies
+ * 6 - Combo (Callsign random and 5 char Alpha) - Word spacing doesn't apply
+ * 7 - Combo (Callsign random and 5 char Alpha) - Word spacing applies
  * x - Callsigns (International) w/ reply (So you have to tack on "DE N!XF" or whatever your callsign is
  * 
  * TODO:
@@ -6166,7 +6185,8 @@ void command_cw_send_practice(byte practice_mode)
   byte loop2 = 0;
   byte x = 0;
   byte user_send_loop = 0;
-  String cw_to_send_to_user(10);
+  String cw_to_send_to_user(20);
+  String cw_to_send_to_user_display(20);  // For display purposes (space removal)
   char incoming_char = ' ';
   String user_sent_cw = "";
   byte paddle_hit = 0;
@@ -6182,7 +6202,7 @@ void command_cw_send_practice(byte practice_mode)
   short sRunCount = 0; // 3 Feb 2018 GAS Keep track of the number of successful words
   char ctmpBuff[20]; // Its a short (plus formatting)
   short sMaxRun = 0;  // 4 Feb 2018 GAS Keep track of the HWM for score
-  
+  byte spacepos = 0; // For the combo mode
 
   speed_mode = SPEED_NORMAL;                 // put us in normal speed mode 
   if ((configuration.keyer_mode != IAMBIC_A) && (configuration.keyer_mode != IAMBIC_B)) {
@@ -6223,7 +6243,27 @@ void command_cw_send_practice(byte practice_mode)
       send_char('3',0);
       break;
 
-      default:
+     case 4:
+      wordspacecounts = 0;
+      send_char('4',0);
+      break;
+
+     case 5:
+      wordspacecounts = 1;
+      send_char('5',0);
+      break; 
+
+     case 6:
+      wordspacecounts = 0;
+      send_char('6',0);
+      break;
+
+     case 7:
+      wordspacecounts = 1;
+      send_char('7',0);
+      break; 
+      
+     default:
       wordspacecounts = 0;
       send_char('?',0);
       break;     
@@ -6259,6 +6299,7 @@ void command_cw_send_practice(byte practice_mode)
       case 2: // Callsign (US)
       case 3: // Callsign (US)
         cw_to_send_to_user = generate_callsign(CALLSIGN_US);
+        cw_to_send_to_user_display = cw_to_send_to_user;
         break;
 
       case 0:
@@ -6269,9 +6310,61 @@ void command_cw_send_practice(byte practice_mode)
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user_display = cw_to_send_to_user;
         progressive_step_counter = 1;      
         break;
-      
+
+      case 4: // Combo - no spacing
+        // This one is tougher as we want to display the space, but not penalize the user for it
+        cw_to_send_to_user = generate_callsign(CALLSIGN_US);
+        spacepos = cw_to_send_to_user.length();
+        cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user_display = cw_to_send_to_user;
+        cw_to_send_to_user.remove(spacepos, 1);
+        break;
+        
+      case 5: // Combo - spacing
+        cw_to_send_to_user = generate_callsign(CALLSIGN_US);
+        cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));   
+        cw_to_send_to_user_display = cw_to_send_to_user;      
+        break;
+
+
+      case 6: // Callsign Random - no spacing
+        // CALLSIGN_RANDOM
+        // This one is tougher as we want to display the space, but not penalize the user for it
+        cw_to_send_to_user = generate_callsign(CALLSIGN_RANDOM);
+        spacepos = cw_to_send_to_user.length();
+        cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user_display = cw_to_send_to_user;
+        cw_to_send_to_user.remove(spacepos, 1);       
+        break;
+        
+      case 7: // Callsign Random - spacing
+        // CALLSIGN_RANDOM
+        cw_to_send_to_user = generate_callsign(CALLSIGN_RANDOM);
+        cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));
+        cw_to_send_to_user.concat((char)random(65,91));   
+        cw_to_send_to_user_display = cw_to_send_to_user;             
+        break;
+        
     }
         
 
@@ -6301,7 +6394,7 @@ void command_cw_send_practice(byte practice_mode)
        
        // Row 2
        lcd.setCursor(0,1);
-       lcd.print(cw_to_send_to_user);
+       lcd.print(cw_to_send_to_user_display);
  
        // 3 Feb 2018 GAS This looks to put this in the non-pregressive mode
        progressive_step_counter = 255;
@@ -11596,6 +11689,13 @@ String generate_callsign(byte callsign_mode) {
   char word_buffer[10];
 
   callsign = "";
+
+  // 4 Feb 2018 GAS Added a flag to generate a random callsign type
+  //                This works so long as the max CALLSIGN_ macro is 3...
+  if(callsign_mode == CALLSIGN_RANDOM)
+  {
+    callsign_mode = random(0,4);
+  }
 
   if (callsign_mode == CALLSIGN_INTERNATIONAL){
     if (random(1,101) < 96) {
