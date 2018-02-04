@@ -6013,13 +6013,22 @@ void command_mode()
         #ifdef FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
           // 5 Feb 2018 GAS (Mode "M")
           case 22:  // M - Simple mode
-          command_cw_send_practice(0);
+          command_cw_send_practice(0); // 5 Char Test
           stay_in_command_mode = 0;
           break;
-          case 2212222:  // More complex...
+          case 2212222:  // 5 Char Test with word spacing
           command_cw_send_practice(1);
           stay_in_command_mode = 0;
           break;
+          case 2211222:  // US Callsigns - no spacing
+          command_cw_send_practice(2);
+          stay_in_command_mode = 0;
+          break;
+          case 2211122:  // UC Callsigns - with word spacing
+          command_cw_send_practice(3);
+          stay_in_command_mode = 0;
+          break; 
+          
         #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
 
         case 112211: // ? - status
@@ -6285,8 +6294,8 @@ void command_cw_send_practice(byte practice_mode)
        lcd.clear();
        lcd.setCursor(0,0);
       
-       // Display the sRunCount
-       sprintf(ctmpBuff, "C: %d H: %d ", sRunCount, sMaxRun);
+       // Display the practice mode, current run count, high score (for this session)
+       sprintf(ctmpBuff, "[%d] C:%d H:%d ", practice_mode, sRunCount, sMaxRun);
 
        lcd.print(ctmpBuff);
        
