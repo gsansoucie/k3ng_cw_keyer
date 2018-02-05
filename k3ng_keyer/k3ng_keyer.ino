@@ -1248,7 +1248,9 @@ byte send_buffer_status = SERIAL_SEND_BUFFER_NORMAL;
   // #define D7_pin        7
   // LiquidCrystal_I2C lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin, BACKLIGHT_PIN, POSITIVE);  
  // 9 Jan 2018 GAS This C'Tor leads me to believe my Sainsmart 20x4 should work
-  LiquidCrystal_I2C lcd(0x27,20,4);
+ // 4 Feb 2018 GAS This is wrong, I left in the code for my 20x4 display (Made no diff in code size)
+  //LiquidCrystal_I2C lcd(0x27,20,4);
+  LiquidCrystal_I2C lcd(0x27,LCD_COLUMNS, LCD_ROWS);
 #endif //FEATURE_SAINSMART_I2C_LCD    
 
 #if defined(FEATURE_LCD_YDv1)
@@ -1409,7 +1411,11 @@ unsigned long automatic_sending_interruption_time = 0;
 unsigned long millis_rollover = 0;
 
 // 4 Feb 2018 GAS Pulling in for CW Send practice
-#if defined(FEATURE_TRAINING_COMMAND_LINE_INTERFACE) || defined(FEATURE_COMMAND_MODE_CW_SEND_PRACTICE)
+#if defined(FEATURE_COMMAND_MODE_CW_SEND_PRACTICE)
+#include "keyer_callsign_prefixes.h"
+#endif
+
+#if defined(FEATURE_TRAINING_COMMAND_LINE_INTERFACE)
   byte check_serial_override = 0;
   #if defined(OPTION_WORDSWORTH_CZECH)
     #include "keyer_training_text_czech.h"
@@ -5722,6 +5728,7 @@ void command_mode()
       debug_serial_port->println(cw_char);
     #endif
     if (cw_char > 0) {              // do the command      
+      // This entire switch block (without the CW Send Test) is 5694 Bytes     
       switch (cw_char) {
         case 12: // A - Iambic mode
           configuration.keyer_mode = IAMBIC_A;
@@ -6010,39 +6017,93 @@ void command_mode()
             break;
         #endif //FEATURE_COMMAND_MODE_PROGRESSIVE_5_CHAR_PRACTICE
 
-        #ifdef FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
+        #if defined(FEATURE_COMMAND_MODE_CW_SEND_PRACTICE) && defined(FEATURE_DISPLAY)
           // 5 Feb 2018 GAS (Mode "M")
           case 22:  // M - Simple mode
-          command_cw_send_practice(0); // 5 Char Test
-          stay_in_command_mode = 0;
-          break;
-          case 2212222:  // 5 Char Test with word spacing
-          command_cw_send_practice(1);
-          stay_in_command_mode = 0;
-          break;
-          case 2211222:  // US Callsigns - no spacing
-          command_cw_send_practice(2);
-          stay_in_command_mode = 0;
-          break;
-          case 2211122:  // US Callsigns - with word spacing
-          command_cw_send_practice(3);
-          stay_in_command_mode = 0;
-          break; 
-          case 2211112:  // Combo  - no spacing
-          command_cw_send_practice(4);
-          stay_in_command_mode = 0;
-          break; 
-          case 2211111:  // Combo  - with word spacing
-          command_cw_send_practice(5);
-          stay_in_command_mode = 0;
-          break; 
-          case 2221111:  // Random Callsign Combo  - no spacing
-          command_cw_send_practice(6);
-          stay_in_command_mode = 0;
-          break; 
-          case 2222111:  // Random Callsign Combo  - with word spacing
-          command_cw_send_practice(7);
-          stay_in_command_mode = 0;
+          // I can use: get_cw_input_from_user() in here to get the mode from the user
+          // Stealing button_that_was_pressed for this
+          lcd_center_print_timed("CW Send Practice", 0, default_display_msg_delay);
+          lcd_center_print_timed("Select Mode", 1, default_display_msg_delay);
+          
+          switch(get_cw_input_from_user(0))
+          {
+            case 22222: // 0
+            command_cw_send_practice(0); // 5 Char Test
+            stay_in_command_mode = 0;
+            break;
+            
+            case 12222:  // 5 Char Test with word spacing
+            command_cw_send_practice(1);
+            stay_in_command_mode = 0;
+            break;
+            
+            case 11222:  // US Callsigns - no spacing
+            command_cw_send_practice(2);
+            stay_in_command_mode = 0;
+            break;
+            
+            case 11122:  // US Callsigns - with word spacing
+            command_cw_send_practice(3);
+            stay_in_command_mode = 0;
+            break; 
+            
+            case 11112:  // Combo  - no spacing
+            command_cw_send_practice(4);
+            stay_in_command_mode = 0;
+            break; 
+            
+            case 11111:  // Combo  - with word spacing
+            command_cw_send_practice(5);
+            stay_in_command_mode = 0;
+            break; 
+            
+            case 21111:  // Random Callsign Combo  - no spacing
+            command_cw_send_practice(6);
+            stay_in_command_mode = 0;
+            break; 
+            
+            case 22111:  // Random Callsign Combo  - with word spacing
+            command_cw_send_practice(7);
+            stay_in_command_mode = 0;
+            break;
+
+            default:
+            boop();
+            stay_in_command_mode = 1;
+            break;
+          }
+          
+//          command_cw_send_practice(0); // 5 Char Test
+//          stay_in_command_mode = 0;
+//          break;
+//          case 2212222:  // 5 Char Test with word spacing
+//          command_cw_send_practice(1);
+//          stay_in_command_mode = 0;
+//          break;
+//          case 2211222:  // US Callsigns - no spacing
+//          command_cw_send_practice(2);
+//          stay_in_command_mode = 0;
+//          break;
+//          case 2211122:  // US Callsigns - with word spacing
+//          command_cw_send_practice(3);
+//          stay_in_command_mode = 0;
+//          break; 
+//          case 2211112:  // Combo  - no spacing
+//          command_cw_send_practice(4);
+//          stay_in_command_mode = 0;
+//          break; 
+//          case 2211111:  // Combo  - with word spacing
+//          command_cw_send_practice(5);
+//          stay_in_command_mode = 0;
+//          break; 
+//          case 2221111:  // Random Callsign Combo  - no spacing
+//          command_cw_send_practice(6);
+//          stay_in_command_mode = 0;
+//          break; 
+//          case 2222111:  // Random Callsign Combo  - with word spacing
+//          command_cw_send_practice(7);
+//          stay_in_command_mode = 0;
+        
           break;                   
           
         #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
@@ -6110,6 +6171,7 @@ void command_mode()
           send_char('?',KEYER_NORMAL); 
           break;                                   
       }
+     
     }
   }
   beep_boop();
@@ -6194,7 +6256,6 @@ void command_cw_send_practice(byte practice_mode)
   unsigned long cw_char;
   byte speed_mode_before = speed_mode;
   byte keyer_mode_before = configuration.keyer_mode;
-  byte progressive_step_counter;
   byte paddle_echo_space_hit = 1;
   byte wordspacecounts=0;
 
@@ -6203,6 +6264,7 @@ void command_cw_send_practice(byte practice_mode)
   char ctmpBuff[20]; // Its a short (plus formatting)
   short sMaxRun = 0;  // 4 Feb 2018 GAS Keep track of the HWM for score
   byte spacepos = 0; // For the combo mode
+  short count = 0;  // Number of completed (Perfect or otherwise) strings
 
   speed_mode = SPEED_NORMAL;                 // put us in normal speed mode 
   if ((configuration.keyer_mode != IAMBIC_A) && (configuration.keyer_mode != IAMBIC_B)) {
@@ -6276,24 +6338,12 @@ void command_cw_send_practice(byte practice_mode)
     // 4 Feb 2018 GAS This is a bit of a hack, but setting this flag correctly handles the initial state, otherwise after WordTimout on start
     //                I treat it as a space which fails the test and basically fails on start of each round.
     paddle_echo_space_hit = 1;
-    // if (practice_mode_called == ECHO_MIXED){
-    //   practice_mode = random(ECHO_2_CHAR_WORDS,ECHO_QSO_WORDS+1);
-    // } else {
-    //   practice_mode = practice_mode_called;
-    // }
 
-    // progressive_step_counter = 255;
-    
-    // switch (practice_mode){
-    //   case CALLSIGN_INTERNATIONAL:
-    //   case CALLSIGN_US:
-    //   case CALLSIGN_EUROPEAN:
-    //   case CALLSIGN_CANADA:
-    //     cw_to_send_to_user = generate_callsign(practice_mode);
-    //     break;
-    //   case ECHO_PROGRESSIVE_5:
-
-
+    // 4 Feb 2018 GAS This switch statement takes up 3104 Bytes
+    //                996 Bytes for a single call to generate_callsign()
+    //                2410 Bytes in the calls to generate_callsign() - found by commenting out only the generate_callsign() calls
+    //                1420 Bytes in the CALLSIGN_RANDOM calls
+    //                254 Bytes for the addition of String::remove() calls
     switch(practice_mode)
     {
       case 2: // Callsign (US)
@@ -6305,13 +6355,15 @@ void command_cw_send_practice(byte practice_mode)
       case 0:
       case 1:
       default:
+        cw_to_send_to_user = generate_send_string(5,0);
+/*        
         cw_to_send_to_user = (char)random(65,91);
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
+*/        
         cw_to_send_to_user_display = cw_to_send_to_user;
-        progressive_step_counter = 1;      
         break;
 
       case 4: // Combo - no spacing
@@ -6319,10 +6371,13 @@ void command_cw_send_practice(byte practice_mode)
         cw_to_send_to_user = generate_callsign(CALLSIGN_US);
         spacepos = cw_to_send_to_user.length();
         cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat(generate_send_string(5,0));
+ /*       
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
+ */       
         cw_to_send_to_user_display = cw_to_send_to_user;
         cw_to_send_to_user.remove(spacepos, 1);
         break;
@@ -6330,11 +6385,14 @@ void command_cw_send_practice(byte practice_mode)
       case 5: // Combo - spacing
         cw_to_send_to_user = generate_callsign(CALLSIGN_US);
         cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat(generate_send_string(5,0));
+/*        
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
-        cw_to_send_to_user.concat((char)random(65,91));   
+        cw_to_send_to_user.concat((char)random(65,91));  
+*/         
         cw_to_send_to_user_display = cw_to_send_to_user;      
         break;
 
@@ -6345,89 +6403,64 @@ void command_cw_send_practice(byte practice_mode)
         cw_to_send_to_user = generate_callsign(CALLSIGN_RANDOM);
         spacepos = cw_to_send_to_user.length();
         cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat(generate_send_string(5,0));
+/*        
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
+*/
         cw_to_send_to_user_display = cw_to_send_to_user;
         cw_to_send_to_user.remove(spacepos, 1);       
         break;
-        
+      
       case 7: // Callsign Random - spacing
         // CALLSIGN_RANDOM
         cw_to_send_to_user = generate_callsign(CALLSIGN_RANDOM);
         cw_to_send_to_user.concat(' ');
+        cw_to_send_to_user.concat(generate_send_string(5,0));
+/*        
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
         cw_to_send_to_user.concat((char)random(65,91));
-        cw_to_send_to_user.concat((char)random(65,91));   
+        cw_to_send_to_user.concat((char)random(65,91));  
+*/         
         cw_to_send_to_user_display = cw_to_send_to_user;             
-        break;
-        
+        break;     
     }
         
-
-        // 3 Feb 2018 GAS Flipping this a bit
-        //  Printing the text to screen
-        //  But only output a single space here
-        //  OK, so this concept works, however:
-        // X. The previous "words" remain on the screen and cause odd breaking of the new words
-        // X. Need to keep track of (and display) the current "run count"
-        //  - Basically anytime we miss, we reset to 0
-        //  - Otherwise, increment on success
-        //  - This solves #1 too:  The display should be:
-        //  "(##) XXXXX"
-        //    Where ## is the "run count"
-
-       // I can't use the encapsulated lcd stuff as the scroll buffers are retained and defeating
-       // what I want to do.  So for this routine, I will work around them
-       // I think I need this lcd_clear() to prep the service_display() calls later
-       lcd_clear();
-       lcd.clear();
-       lcd.setCursor(0,0);
+      // 3 Feb 2018 GAS Flipping this a bit
+      //  Printing the text to screen
+      //  But only output a single space here
+      //  OK, so this concept works, however:
+      // X. The previous "words" remain on the screen and cause odd breaking of the new words
+      // X. Need to keep track of (and display) the current "run count"
+      //  - Basically anytime we miss, we reset to 0
+      //  - Otherwise, increment on success
+      //  - This solves #1 too:  The display should be:
+      //  "(##) XXXXX"
+      //    Where ## is the "run count"
+  
+     // I can't use the encapsulated lcd stuff as the scroll buffers are retained and defeating
+     // what I want to do.  So for this routine, I will work around them
+     // I think I need this lcd_clear() to prep the service_display() calls later
+     lcd_clear();
+     lcd.clear();
+     lcd.setCursor(0,0);
+    
+     // Display the practice mode, current run count, high score (for this session)
+     //sprintf(ctmpBuff, "[%d] C:%d H:%d ", practice_mode, sRunCount, sMaxRun);
+     // 5 Feb 2018 GAS I changed the display to show the total count vs the mode
+     //                 It helps give context when running for a while
+     sprintf(ctmpBuff, "[%d] C:%d H:%d ", count, sRunCount, sMaxRun);
       
-       // Display the practice mode, current run count, high score (for this session)
-       sprintf(ctmpBuff, "[%d] C:%d H:%d ", practice_mode, sRunCount, sMaxRun);
-
-       lcd.print(ctmpBuff);
-       
-       // Row 2
-       lcd.setCursor(0,1);
-       lcd.print(cw_to_send_to_user_display);
+     lcd.print(ctmpBuff);
+     
+     // Row 2
+     lcd.setCursor(0,1);
+     lcd.print(cw_to_send_to_user_display);
  
-       // 3 Feb 2018 GAS This looks to put this in the non-pregressive mode
-       progressive_step_counter = 255;
-
-    //     break; 
-    //   case ECHO_2_CHAR_WORDS: 
-    //     //word_index = random(0,s2_size);  // min parm is inclusive, max parm is exclusive
-    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s2_table[random(0,s2_size)])));
-    //     cw_to_send_to_user = word_buffer;
-    //     break;
-    //   case ECHO_3_CHAR_WORDS: 
-    //     //word_index = random(0,s3_size);  // min parm is inclusive, max parm is exclusive
-    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s3_table[random(0,s3_size)])));
-    //     cw_to_send_to_user = word_buffer;
-    //     break;
-    //   case ECHO_4_CHAR_WORDS: 
-    //     //word_index = random(0,s4_size);  // min parm is inclusive, max parm is exclusive
-    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(s4_table[random(0,s4_size)])));
-    //     cw_to_send_to_user = word_buffer;
-    //     break;    
-    //   case ECHO_NAMES: 
-    //     //word_index = random(0,name_size);  // min parm is inclusive, max parm is exclusive
-    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(name_table[random(0,name_size)])));
-    //     cw_to_send_to_user = word_buffer;
-    //     break; 
-    //   case ECHO_QSO_WORDS: 
-    //     //word_index = random(0,qso_size);  // min parm is inclusive, max parm is exclusive
-    //     strcpy_P(word_buffer, (char*)pgm_read_word(&(qso_table[random(0,qso_size)])));
-    //     cw_to_send_to_user = word_buffer;
-    //     break; 
-    // } //switch (practice_mode)
-    
-    
     loop2 = 1;
     
     while (loop2){
@@ -6512,11 +6545,7 @@ void command_cw_send_practice(byte practice_mode)
           
         }else if(wordspacecounts && (!paddle_hit) && (millis() > (paddle_echo_buffer_decode_time + (float(1200/configuration.wpm)*(configuration.length_wordspace-length_letterspace)))) && (!paddle_echo_space_hit)) {
           // Only if we care about word spacing
-          // 4 Feb 2018 GAS I believe a test here for word space would account for word timing, inserting a space if the user waits too long
-  
-          //if ((paddle_echo_buffer == 0) && (millis() > (paddle_echo_buffer_decode_time + (float(1200/configuration.wpm)*(configuration.length_wordspace-length_letterspace)))) && (!paddle_echo_space_hit)) {
-          // So, nothing hit (!paddle_hit) && the time has been exceeded...
-          //    Need a flag for paddle_echo_space_hit (otherwise there will be no end)         
+          // 4 Feb 2018 GAS I believe a test here for word space would account for word timing, inserting a space if the user waits too long   
             
           user_sent_cw.concat(' ');
           paddle_echo_space_hit = 1;
@@ -6531,7 +6560,7 @@ void command_cw_send_practice(byte practice_mode)
 
 
         // do we have all the characters from the user? - if so, get out of user_send_loop
-        if ((user_sent_cw.length() >= cw_to_send_to_user.length()) || ((progressive_step_counter < 255) && (user_sent_cw.length() == progressive_step_counter))) {
+        if ((user_sent_cw.length() >= cw_to_send_to_user.length())) {
           user_send_loop = 0;
           //port_to_use->println();
         }
@@ -6549,23 +6578,6 @@ void command_cw_send_practice(byte practice_mode)
       } //while (user_send_loop)
 
       if (loop1 && loop2){
-        if (progressive_step_counter < 255){  // we're in progressive mode 
-          if (user_sent_cw.substring(0,progressive_step_counter) == cw_to_send_to_user.substring(0,progressive_step_counter)){ 
-            send_char(' ',0);
-            send_char(' ',0);
-            progressive_step_counter++;
-            if (progressive_step_counter == 6){
-              loop2 = 0;
-              beep();
-              send_char(' ',0);
-              send_char(' ',0);
-            }
-          } else {
-            boop();
-            send_char(' ',0);
-            send_char(' ',0);
-          }
-        } else {  
           // String compare
           if (user_sent_cw == cw_to_send_to_user){     
             beep();
@@ -6578,6 +6590,10 @@ void command_cw_send_practice(byte practice_mode)
             {
               sMaxRun = sRunCount;
             }
+            
+            // Only increment count in here as we are going to move onto next string
+            count++;
+            
           } else {
             boop();
             send_char(' ',0);
@@ -6585,10 +6601,13 @@ void command_cw_send_practice(byte practice_mode)
             
             // 3 Feb 2018 GAS Reset the Run Count
             sRunCount = 0; 
+            
+
+            
             // Prent an initial error after restarting on a failed send
             paddle_echo_space_hit = 1;
+            
           }
-        } //if (progressive_step_counter < 255)
       } //if (loop1 && loop2)
     } //loop2
   } //loop1
@@ -6604,6 +6623,22 @@ void command_cw_send_practice(byte practice_mode)
   service_display();
   
   
+}
+
+// Tacked this one on to encapsulate the generation of the send string 
+//  hoped to save some bytes, that didn't happen
+String generate_send_string(byte bLen, byte bAlphaNumeric)
+{
+  static String strbuffer(10);
+  char nextchar;
+
+  strbuffer = "";
+  for(int i=0;i<bLen;i++)
+  {
+    strbuffer.concat((char)random(65,91));
+  }
+
+  return(strbuffer);
 }
 #endif // FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
 

@@ -2,7 +2,7 @@
 // compile time features and options - comment or uncomment to add or delete features
 // FEATURES add more bytes to the compiled binary, OPTIONS change code behavior
 
-// 25 Jan 2018 GAS Added CMD Button 0 to project
+// 25 Jan 2018 GAS Added CMD Button 0 to project (7392 Bytes)
 #define FEATURE_COMMAND_BUTTONS
 // 7 Jan 2018 GAS
 // 25 Jan 2018 GAS - No CLI for my actual project
@@ -11,7 +11,7 @@
 // #define FEATURE_MEMORY_MACROS
 // 30 Jan 2018 GAS Adding this feature for use with the FTDI chip and Iambic Master
 // 4 Feb 2018 GAS WINKEY_EMULATION is a hog (~5k bytes), had to disable it for my stand along CW test code to work
-// #define FEATURE_WINKEY_EMULATION    // disabling Automatic Software Reset is highly recommended (see documentation)
+//#define FEATURE_WINKEY_EMULATION    // disabling Automatic Software Reset is highly recommended (see documentation)
 // #define FEATURE_BEACON
 // #define FEATURE_TRAINING_COMMAND_LINE_INTERFACE
 // #define FEATURE_POTENTIOMETER         // do not enable unless you have a potentiometer connected, otherwise noise will falsely trigger wpm changes
@@ -30,7 +30,7 @@
 // #define FEATURE_LCD_ADAFRUIT_BACKPACK    // Adafruit I2C LCD Backup using MCP23008 (courtesy Josiah Ritchie, KE0BLL)
 // #define FEATURE_LCD_YDv1                // YourDuino I2C LCD display with old LCM 1602 V1 ic
 // #define FEATURE_LCD1602_N07DH      // http://linksprite.com/wiki/index.php5?title=16_X_2_LCD_Keypad_Shield_for_Arduino
-// 9 Jan 2018 GAS (This worked somewhat)
+// 9 Jan 2018 GAS (This works with changes in the ino file) 6102 Bytes
 #define FEATURE_LCD_SAINSMART_I2C
 // #define FEATURE_CW_DECODER
 // #define FEATURE_SLEEP                   // go to sleep after x minutes to conserve battery power (not compatible with Arduino DUE, may have mixed results with Mega and Mega ADK)
@@ -42,7 +42,7 @@
 // #define FEATURE_LED_RING                // Mayhew Labs Led Ring support
 // #define FEATURE_ALPHABET_SEND_PRACTICE  // enables command mode S command - created by Ryan, KC2ZWM
 // #define FEATURE_COMMAND_MODE_PROGRESSIVE_5_CHAR_ECHO_PRACTICE // enables command mode U
-// 4 Feb 2018 GAS N1XF CW Send practice mode - Requires FEATURE_DISPLAY && FEATURE_COMMAND_MODE
+// 4 Feb 2018 GAS N1XF CW Send practice mode - Requires FEATURE_DISPLAY && FEATURE_COMMAND_MODE 5152 Bytes
 #define FEATURE_COMMAND_MODE_CW_SEND_PRACTICE
 
 // #define FEATURE_PTT_INTERLOCK 
