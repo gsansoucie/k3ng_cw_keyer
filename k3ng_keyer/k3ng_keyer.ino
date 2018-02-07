@@ -6265,6 +6265,8 @@ void command_cw_send_practice(byte practice_mode)
   short sMaxRun = 0;  // 4 Feb 2018 GAS Keep track of the HWM for score
   byte spacepos = 0; // For the combo mode
   short count = 0;  // Number of completed (Perfect or otherwise) strings
+  short attempts = 0;
+  short score = 0;
 
   speed_mode = SPEED_NORMAL;                 // put us in normal speed mode 
   if ((configuration.keyer_mode != IAMBIC_A) && (configuration.keyer_mode != IAMBIC_B)) {
@@ -6453,7 +6455,13 @@ void command_cw_send_practice(byte practice_mode)
      //sprintf(ctmpBuff, "[%d] C:%d H:%d ", practice_mode, sRunCount, sMaxRun);
      // 5 Feb 2018 GAS I changed the display to show the total count vs the mode
      //                 It helps give context when running for a while
-     sprintf(ctmpBuff, "[%d] C:%d H:%d ", count, sRunCount, sMaxRun);
+     if(attempts)
+     {
+        score = ((float)count/(float)attempts) * 100;
+     }
+     
+     //sprintf(ctmpBuff, "[%d] C:%d H:%d ", count, sRunCount, sMaxRun);
+     sprintf(ctmpBuff, "[%d] %d%% H:%d ", count, score, sMaxRun);
       
      lcd.print(ctmpBuff);
      
@@ -6593,6 +6601,7 @@ void command_cw_send_practice(byte practice_mode)
             
             // Only increment count in here as we are going to move onto next string
             count++;
+            attempts++;
             
           } else {
             boop();
@@ -6601,7 +6610,7 @@ void command_cw_send_practice(byte practice_mode)
             
             // 3 Feb 2018 GAS Reset the Run Count
             sRunCount = 0; 
-            
+            attempts++;
 
             
             // Prent an initial error after restarting on a failed send
